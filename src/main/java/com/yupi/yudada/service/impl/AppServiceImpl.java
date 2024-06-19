@@ -11,7 +11,6 @@ import com.yupi.yudada.mapper.AppMapper;
 import com.yupi.yudada.model.dto.app.AppQueryRequest;
 import com.yupi.yudada.model.entity.App;
 import com.yupi.yudada.model.entity.User;
-
 import com.yupi.yudada.model.enums.AppScoringStrategyEnum;
 import com.yupi.yudada.model.enums.AppTypeEnum;
 import com.yupi.yudada.model.enums.ReviewStatusEnum;

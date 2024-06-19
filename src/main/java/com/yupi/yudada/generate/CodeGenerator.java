@@ -29,7 +29,7 @@ public class CodeGenerator {
      */
     public static void main(String[] args) throws TemplateException, IOException {
         // 指定生成参数
-        String packageName = "com.yupi.springbootinit";
+        String packageName = "com.yupi.yudada";
         String dataName = "用户答案";
         String dataKey = "userAnswer";
         String upperDataKey = "UserAnswer";
