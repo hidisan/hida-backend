@@ -101,3 +101,6 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.yupi.springbootinit.controller
+#AI 配置
+ai:
+  apiKey: 54424741622a182c89d8c4f5920ac68e.rmpLwga0B3NfZ0uO
