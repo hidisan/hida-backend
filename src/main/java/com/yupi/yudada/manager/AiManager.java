@@ -4,10 +4,8 @@ import com.yupi.yudada.common.ErrorCode;
 import com.yupi.yudada.exception.BusinessException;
 import com.zhipu.oapi.ClientV4;
 import com.zhipu.oapi.Constants;
-import com.zhipu.oapi.service.v4.model.ChatCompletionRequest;
-import com.zhipu.oapi.service.v4.model.ChatMessage;
-import com.zhipu.oapi.service.v4.model.ChatMessageRole;
-import com.zhipu.oapi.service.v4.model.ModelApiResponse;
+import com.zhipu.oapi.service.v4.model.*;
+import io.reactivex.Flowable;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -95,6 +93,39 @@ public class AiManager {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, e.getMessage());
         }
 
+    }
+
+    public Flowable<ModelData> doStreamAiRequest(String systemMessage, String userMessage, Float temperature) {
+        List<ChatMessage> chatMessageList = new ArrayList<>();
+        ChatMessage systemChatMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage);
+        chatMessageList.add(systemChatMessage);
+        ChatMessage userChatMessage = new ChatMessage(ChatMessageRole.USER.value(), userMessage);
+        chatMessageList.add(userChatMessage);
+        return doStreamAiRequest(chatMessageList, temperature);
+    }
+
+    /**
+     * 通用流式请求
+     * @param messages
+     * @param temperature
+     * @return
+     */
+    public Flowable<ModelData> doStreamAiRequest(List<ChatMessage> messages, Float temperature) {
+        // 构建请求
+        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
+                .model(Constants.ModelChatGLM4)
+                .stream(Boolean.TRUE)
+                .temperature(temperature)
+                .invokeMethod(Constants.invokeMethod)
+                .messages(messages)
+                .build();
+        try {
+            ModelApiResponse invokeModelApi = clientV4.invokeModelApi(chatCompletionRequest);
+            return invokeModelApi.getFlowable();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, e.getMessage());
+        }
     }
 
 }
