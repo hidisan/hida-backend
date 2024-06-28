@@ -122,6 +122,11 @@
             <artifactId>oapi-java-sdk</artifactId>
             <version>release-V4-2.0.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+            <version>1.0.4</version>
+        </dependency>
 
     </dependencies>
 
