@@ -1,5 +1,7 @@
 package com.yupi.yudada.controller;
 
+import cn.hutool.core.util.IdUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yupi.yudada.annotation.AuthCheck;
 import com.yupi.yudada.common.BaseResponse;
@@ -13,17 +15,23 @@ import com.yupi.yudada.model.dto.userAnswer.UserAnswerAddRequest;
 import com.yupi.yudada.model.dto.userAnswer.UserAnswerEditRequest;
 import com.yupi.yudada.model.dto.userAnswer.UserAnswerQueryRequest;
 import com.yupi.yudada.model.dto.userAnswer.UserAnswerUpdateRequest;
+import com.yupi.yudada.model.entity.App;
 import com.yupi.yudada.model.entity.UserAnswer;
 import com.yupi.yudada.model.entity.User;
+import com.yupi.yudada.model.enums.ReviewStatusEnum;
 import com.yupi.yudada.model.vo.UserAnswerVO;
+import com.yupi.yudada.scoring.ScoringStrategyExecutor;
+import com.yupi.yudada.service.AppService;
 import com.yupi.yudada.service.UserAnswerService;
 import com.yupi.yudada.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 用户答案接口
@@ -42,6 +50,11 @@ public class UserAnswerController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private AppService appService;
+
+    @Resource
+    private ScoringStrategyExecutor scoringStrategyExecutor;
     // region 增删改查
 
     /**
@@ -57,16 +70,39 @@ public class UserAnswerController {
         // todo 在此处将实体类和 DTO 进行转换
         UserAnswer userAnswer = new UserAnswer();
         BeanUtils.copyProperties(userAnswerAddRequest, userAnswer);
+        List<String> choices = userAnswerAddRequest.getChoices();
+        userAnswer.setChoices(JSONUtil.toJsonStr(choices));
         // 数据校验
         userAnswerService.validUserAnswer(userAnswer, true);
-        // todo 填充默认值
+        // 判断app是否存在
+        Long appId = userAnswerAddRequest.getAppId();
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
+        if (!ReviewStatusEnum.PASS.equals(ReviewStatusEnum.getEnumByValue(app.getReviewStatus()))) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "应用未通过审核，无法答题");
+        }
+        // 填充默认值
         User loginUser = userService.getLoginUser(request);
         userAnswer.setUserId(loginUser.getId());
         // 写入数据库
-        boolean result = userAnswerService.save(userAnswer);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        try {
+            boolean result = userAnswerService.save(userAnswer);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        } catch (DuplicateKeyException e) {
+
+        }
         // 返回新写入的数据 id
         long newUserAnswerId = userAnswer.getId();
+        // 调用评分模块
+        try {
+            UserAnswer userAnswerWithResult = scoringStrategyExecutor.doScore(choices, app);
+            userAnswerWithResult.setId(newUserAnswerId);
+            userAnswerWithResult.setAppId(appId);
+            userAnswerService.updateById(userAnswerWithResult);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "评分错误");
+        }
         return ResultUtils.success(newUserAnswerId);
     }
 
@@ -233,6 +269,11 @@ public class UserAnswerController {
         boolean result = userAnswerService.updateById(userAnswer);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+    // 雪花算法生成用户回答id
+    @GetMapping("/generate/id")
+    public BaseResponse<Long> generateUserAnswerId() {
+        return ResultUtils.success(IdUtil.getSnowflakeNextId());
     }
 
     // endregion
