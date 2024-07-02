@@ -84,7 +84,7 @@ public class AiTestScoringStrategy implements ScoringStrategy {
             return userAnswer;
         }
 
-        // 定义锁
+        // 定义锁，加上前缀区分业务
         RLock lock = redissonClient.getLock(AI_ANSWER_LOCK + cacheKey);
         try {
             //竞争锁
@@ -138,7 +138,7 @@ public class AiTestScoringStrategy implements ScoringStrategy {
         userMessage.append(app.getAppName()).append("\n");
         userMessage.append(app.getAppDesc()).append("\n");
         List<QuestionAnswerDTO> questionAnswerDTOList = new ArrayList<>();
-        for (int i = 0; i < questionAnswerDTOList.size(); i++) {
+        for (int i = 0; i < questionContentDTOList.size(); i++) {
             QuestionAnswerDTO questionAnswerDTO = new QuestionAnswerDTO();
             questionAnswerDTO.setTitle(questionContentDTOList.get(i).getTitle());
             questionAnswerDTO.setUserAnswer(choices.get(i));
